@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flashcard Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .flashcard-container {
+            perspective: 1000px;
+        }
+        .flashcard {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            cursor: pointer;
+        }
+        .flashcard.is-flipped {
+            transform: rotateY(180deg);
+        }
+        .flashcard-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+        }
+        .flashcard-front {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+        }
+        .flashcard-back {
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            transform: rotateY(180deg);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900">Flashcard Generator</h1>
+            <p class="text-lg text-gray-600 mt-2">Paste your text below to create interactive flashcards.</p>
+        </header>
+
+        <main>
+            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h2 class="text-2xl font-semibold mb-4">Your Text</h2>
+                <textarea id="text-input" class="w-full h-48 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Enter your text here. Use a special separator like '---' between the front and back of each card, and '===' between cards.&#10;&#10;Example:&#10;Question 1&#10;---&#10;Answer 1&#10;===&#10;Question 2&#10;---&#10;Answer 2"></textarea>
+                <div class="flex flex-col sm:flex-row gap-4 mt-4">
+                    <input type="text" id="card-separator" value="===" class="w-full sm:w-1/2 p-3 border border-gray-300 rounded-lg" placeholder="Card Separator (e.g., ===)">
+                    <input type="text" id="side-separator" value="---" class="w-full sm:w-1/2 p-3 border border-gray-300 rounded-lg" placeholder="Front/Back Separator (e.g., ---)">
+                </div>
+                <button id="generate-btn" class="mt-4 w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors duration-300 shadow">
+                    Generate Flashcards
+                </button>
+            </div>
+
+            <div id="flashcards-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Flashcards will be inserted here -->
+            </div>
+             <div id="message-box" class="hidden fixed bottom-5 right-5 bg-red-500 text-white py-3 px-5 rounded-lg shadow-lg"></div>
+        </main>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const generateBtn = document.getElementById('generate-btn');
+        const textInput = document.getElementById('text-input');
+        const flashcardsContainer = document.getElementById('flashcards-container');
+        const cardSeparatorInput = document.getElementById('card-separator');
+        const sideSeparatorInput = document.getElementById('side-separator');
+        const messageBox = document.getElementById('message-box');
+
+        // --- Event Listeners ---
+        generateBtn.addEventListener('click', createFlashcards);
+
+        /**
+         * Shows a message to the user.
+         * @param {string} message - The message to display.
+         */
+        function showMessage(message) {
+            messageBox.textContent = message;
+            messageBox.classList.remove('hidden');
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 3000);
+        }
+
+
+        /**
+         * Main function to create flashcards from the user's input.
+         */
+        function createFlashcards() {
+            // Get user input and separators
+            const rawText = textInput.value.trim();
+            const cardSeparator = cardSeparatorInput.value.trim();
+            const sideSeparator = sideSeparatorInput.value.trim();
+
+            // Validate inputs
+            if (!rawText) {
+                showMessage('Please enter some text to generate flashcards.');
+                return;
+            }
+            if (!cardSeparator || !sideSeparator) {
+                showMessage('Please provide separators for cards and sides.');
+                return;
+            }
+
+            // Clear any existing flashcards
+            flashcardsContainer.innerHTML = '';
+
+            // Split the text into individual card data
+            const cardData = rawText.split(cardSeparator);
+
+            // Create and append each flashcard
+            cardData.forEach((cardStr, index) => {
+                if (cardStr.trim() === '') return;
+
+                const sides = cardStr.split(sideSeparator);
+                const frontText = sides[0] ? sides[0].trim() : 'Front is empty';
+                const backText = sides[1] ? sides[1].trim() : 'Back is empty';
+
+                const cardElement = buildFlashcard(frontText, backText, index);
+                flashcardsContainer.appendChild(cardElement);
+            });
+             if(flashcardsContainer.innerHTML === ''){
+                showMessage('No flashcards were generated. Check your separators and text format.');
+            }
+        }
+
+        /**
+         * Builds a single flashcard element.
+         * @param {string} frontText - The text for the front of the card.
+         * @param {string} backText - The text for the back of the card.
+         * @param {number} index - The index of the card.
+         * @returns {HTMLElement} The complete flashcard element.
+         */
+        function buildFlashcard(frontText, backText) {
+            // Create the main container
+            const container = document.createElement('div');
+            container.className = 'flashcard-container h-64';
+
+            // Create the flippable card element
+            const card = document.createElement('div');
+            card.className = 'flashcard';
+            
+            // --- Create Front Face ---
+            const frontFace = document.createElement('div');
+            frontFace.className = 'flashcard-face flashcard-front';
+            
+            const frontContent = document.createElement('p');
+            frontContent.className = 'text-lg text-center';
+            frontContent.textContent = frontText;
+            frontFace.appendChild(frontContent);
+
+            // --- Create Back Face ---
+            const backFace = document.createElement('div');
+            backFace.className = 'flashcard-face flashcard-back';
+
+            const backContent = document.createElement('p');
+            backContent.className = 'text-lg text-center';
+            backContent.textContent = backText;
+            backFace.appendChild(backContent);
+            
+            // Assemble the card
+            card.appendChild(frontFace);
+            card.appendChild(backFace);
+            container.appendChild(card);
+
+            // Add click event to flip the card
+            container.addEventListener('click', () => {
+                card.classList.toggle('is-flipped');
+            });
+
+            return container;
+        }
+
+    </script>
+</body>
+</html>
